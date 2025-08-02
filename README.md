@@ -1,240 +1,180 @@
-<<<<<<< HEAD
-# adversarial-visualizer
-=======
-# 🔍 Adversarial Attack Visualizer
+# Adversarial Attack Visualizer
 
-A comprehensive GUI application for visualizing and analyzing adversarial attacks on deep neural networks. This tool provides an intuitive interface for generating, visualizing, and understanding adversarial examples using state-of-the-art attack methods.
+A comprehensive GUI application for visualizing and understanding adversarial attacks on deep neural networks.
 
-## ✨ Features
+![Python](https://img.shields.io/badge/python-v3.8+-blue.svg)
+![PyTorch](https://img.shields.io/badge/PyTorch-v1.9+-red.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-### 🚀 Core Functionality
-- **Multiple Attack Methods**: FGSM, PGD, DeepFool, and Carlini-Wagner (CW)
-- **Real-time Visualization**: 5-panel display showing original image, perturbation overlay, adversarial image, confidence heatmap, and attack progression
-- **Interactive Parameters**: Adjustable epsilon, iterations, and other attack parameters via GUI sliders
-- **Image Search**: Built-in image search using Pexels API, Unsplash, and Bing
-- **Progress Tracking**: Live visualization of attack convergence
+## Features
 
-### 📊 Advanced Visualizations
-- **3D Attack Surface**: Visualize attack success rates across different parameters
-- **Gradient Flow**: Show how gradients flow during attacks
-- **Vulnerability Heatmap**: Identify which image regions are most susceptible to attacks
-- **Attack Progression**: Real-time plotting of loss and confidence changes
+### Attack Methods
+- FGSM (Fast Gradient Sign Method)
+- PGD (Projected Gradient Descent)
+- DeepFool (Minimal perturbation attack)
+- C&W (Carlini & Wagner attack)
 
-### 🎬 Export Capabilities
-- **Video Export**: Generate smooth transition videos between original and adversarial images
-- **Results Export**: Detailed attack results with success metrics
-- **Graph Spacing**: Optimized layout for better visualization
+### Visualizations
+- Real-time attack progression tracking
+- Side-by-side original vs adversarial image comparison
+- Enhanced perturbation visualization (10x amplified)
+- Top 5 prediction confidence analysis
+- 3D attack surface mapping
+- Gradient flow visualization
+- Vulnerability heatmaps
 
-### 🛡️ Analysis Tools
-- **Confidence Analysis**: Top-5 class confidence visualization
-- **Attack Success Metrics**: Comprehensive success rate analysis
-- **Parameter Sensitivity**: Interactive parameter tuning
+### Image Sources
+- Pexels API integration for image search
+- Unsplash fallback support
+- Direct URL image loading
+- Automatic fallback to dummy images (optional)
 
-## 🚀 Quick Start
+## Screenshots
+
+**Attack Progression**
+
+![Attack Progression](docs/assets/attack_progression.gif)
+
+**Attack Surface Visualization**
+
+![Attack Surface](docs/assets/attack_surface.gif)
+
+## Installation
 
 ### Prerequisites
 - Python 3.8 or higher
-- CUDA-compatible GPU (recommended but not required)
+- CUDA-compatible GPU (optional, but recommended)
 
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd adversarial_attack_visualizer
-   ```
-
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Set up environment variables (optional)**
-   ```bash
-   # Create .env file for API keys
-   echo "PEXELS_API_KEY=your_pexels_api_key_here" > .env
-   ```
-
-4. **Run the application**
-   ```bash
-   python scripts/run_attack.py
-   ```
-
-## 📖 Usage Guide
-
-### Basic Usage
-1. **Select Attack Method**: Choose from FGSM, PGD, DeepFool, or CW
-2. **Adjust Parameters**: Use sliders to set epsilon and iteration values
-3. **Load Image**: Either search for images or provide a direct URL
-4. **Run Attack**: Click "Search & Attack" or "Load & Attack"
-5. **Analyze Results**: View the 5-panel visualization and results text
-
-### Advanced Features
-- **3D Attack Surface**: Click "📊 3D Attack Surface" to analyze attack effectiveness across parameter ranges
-- **Gradient Flow**: Use "🌊 Gradient Flow" to visualize gradient information
-- **Vulnerability Heatmap**: Click "🔥 Vulnerability Heatmap" to see vulnerable image regions
-- **Video Export**: Generate transition videos with "🎬 Export Attack Video"
-
-### Interactive Controls
-- **Epsilon Slider**: Adjust perturbation magnitude (0.001 - 0.1)
-- **Iterations Slider**: Set number of attack iterations (10 - 100)
-- **Real-time Updates**: Enable for immediate parameter changes
-- **Animation Controls**: Start/stop transition animations
-
-## 🏗️ Architecture
-
-### File Structure
+### Setup
+```bash
+git clone https://github.com/yourusername/adversarial-attack-visualizer.git
+cd adversarial-attack-visualizer
+pip install -r requirements.txt
+cp .env.example .env
 ```
-adversarial_attack_visualizer/
-├── scripts/
-│   └── run_attack.py          # Main GUI application
-├── attacks/
-│   ├── fgsm.py               # FGSM attack implementation
-│   ├── pgd.py                # PGD attack implementation
-│   ├── deepfool.py           # DeepFool attack implementation
-│   └── cw.py                 # Carlini-Wagner attack implementation
-├── requirements.txt          # Python dependencies
-└── README.md                # This file
+Edit `.env` and insert your Pexels API key.
+
+## Usage
+
+### Quick Start
+```bash
+python scripts/run_attack.py
 ```
 
-### Key Components
+### Test Installation
+```bash
+python test_setup.py
+```
 
-#### Main GUI Class (`AdversarialAttackGUI`)
-- **Initialization**: Sets up model, transforms, and UI components
-- **Image Processing**: Handles image loading, preprocessing, and attack execution
-- **Visualization**: Manages matplotlib plots and real-time updates
-- **Export Functions**: Handles video generation and results export
-
-#### Attack Methods
-- **FGSM**: Fast Gradient Sign Method - single-step attack
-- **PGD**: Projected Gradient Descent - iterative FGSM with momentum
-- **DeepFool**: Finds minimal perturbations to cross decision boundaries
-- **CW**: Carlini-Wagner - optimization-based attack with L2 constraints
-
-## 🎯 Attack Methods Detail
-
-### FGSM (Fast Gradient Sign Method)
-- **Speed**: Very fast (single iteration)
-- **Parameters**: Epsilon (perturbation magnitude)
-- **Use Case**: Quick adversarial example generation
-
-### PGD (Projected Gradient Descent)
-- **Speed**: Medium (multiple iterations)
-- **Parameters**: Epsilon, alpha (step size), iterations, momentum
-- **Use Case**: Strong iterative attacks with momentum
-
-### DeepFool
-- **Speed**: Variable (until convergence)
-- **Parameters**: Max iterations, overshoot, number of classes
-- **Use Case**: Minimal perturbation attacks
-
-### Carlini-Wagner (CW)
-- **Speed**: Slow (optimization-based)
-- **Parameters**: c (regularization), kappa (confidence), iterations
-- **Use Case**: Strong L2-norm constrained attacks
-
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
-Create a `.env` file in the project root:
 ```
 PEXELS_API_KEY=your_pexels_api_key_here
 ```
 
-### Model Configuration
-The application uses ResNet-18 pre-trained on ImageNet by default. To use different models, modify the initialization in `run_attack.py`:
+### Attack Parameters
+- Epsilon: Perturbation magnitude (0.001 - 0.1)
+- Iterations: Number of attack iterations (10 - 100)
+- Attack Method: FGSM, PGD, DeepFool, or C&W
 
-```python
-self.model = models.resnet50(weights='IMAGENET1K_V1').eval().to(self.device)
+## Project Structure
+```
+adversarial-attack-visualizer/
+├── scripts/
+│   └── run_attack.py
+├── attacks/
+│   ├── fgsm.py
+│   ├── pgd.py
+│   ├── deepfool.py
+│   └── cw.py
+├── utils/
+│   ├── image_utils.py
+│   └── visualization.py
+├── requirements.txt
+├── test_setup.py
+├── .env.example
+├── .gitignore
+└── README.md
 ```
 
-### Attack Parameters
-Default parameters are optimized for ImageNet classification:
-- **Epsilon**: 0.03 (3% of input range)
-- **Iterations**: 40 for iterative methods
-- **Learning Rate**: 0.01 for optimization-based methods
+## Examples
 
-## 🐛 Troubleshooting
+### Basic Attack
+1. Launch the application
+2. Enter search term (e.g., "cat", "dog", "car")
+3. Select attack method
+4. Adjust parameters using sliders
+5. Click "Search & Attack"
+
+### Advanced Visualizations
+- 3D Attack Surface: Compare attack effectiveness across methods and parameters
+- Gradient Flow: Visualize gradient magnitudes during attacks
+- Vulnerability Heatmap: Identify most vulnerable image regions
+
+## Technical Details
+
+### Model
+- Architecture: ResNet-18
+- Dataset: ImageNet pretrained
+- Input Size: 224x224 RGB
+- Normalization: ImageNet standard (mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
+### Attack Implementations
+- FGSM: Single-step gradient-based attack
+- PGD: Multi-step projected gradient descent with momentum
+- DeepFool: Iterative minimal perturbation method
+- C&W: Optimization-based attack with L2 norm constraints
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/your-feature`)
+3. Commit your changes (`git commit -m 'Add feature'`)
+4. Push to your branch (`git push origin feature/your-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License. See the LICENSE file for details.
+
+## Acknowledgments
+
+- PyTorch team for the deep learning framework
+- ImageNet dataset contributors
+- Pexels and Unsplash for image APIs
+- Researchers behind adversarial methods
+
+## Citation
+
+```bibtex
+@software{adversarial_attack_visualizer,
+  title={Adversarial Attack Visualizer},
+  author={Your Name},
+  year={2025},
+  url={https://github.com/yourusername/adversarial-attack-visualizer}
+}
+```
+
+## Troubleshooting
 
 ### Common Issues
 
-1. **CUDA Out of Memory**
-   ```python
-   # Reduce batch size or use CPU
-   self.device = torch.device("cpu")
-   ```
+- CUDA out of memory: Reduce batch size or switch to CPU
+- Missing dependencies: Run `pip install -r requirements.txt`
+- API key errors: Check `.env` file
+- Slow performance: Use GPU acceleration
 
-2. **Import Errors**
-   ```bash
-   # Reinstall dependencies
-   pip install --upgrade -r requirements.txt
-   ```
+### Getting Help
 
-3. **Image Search Failures**
-   - Check internet connection
-   - Verify API keys in .env file
-   - Try different search terms
+- Open a GitHub issue
+- Search existing issues
+- Review documentation and logs
 
-4. **Video Export Issues**
-   ```bash
-   # Install OpenCV
-   pip install opencv-python
-   ```
+## Roadmap
 
-### Performance Optimization
-
-1. **GPU Usage**: Ensure CUDA is available for faster processing
-2. **Memory Management**: Close unused windows and clear variables
-3. **Parameter Tuning**: Start with smaller iteration counts for testing
-
-## 🤝 Contributing
-
-### Development Setup
-1. Fork the repository
-2. Create a feature branch
-3. Install development dependencies
-4. Make changes and test thoroughly
-5. Submit a pull request
-
-### Code Style
-- Follow PEP 8 guidelines
-- Add docstrings to all functions
-- Include type hints where appropriate
-- Write unit tests for new features
-
-### Adding New Attack Methods
-1. Create new file in `attacks/` directory
-2. Implement attack function with progress tracking
-3. Add to GUI dropdown and processing logic
-4. Update documentation
-
-## 📝 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- **PyTorch Team**: For the excellent deep learning framework
-- **Adversarial Robustness Toolbox**: For attack implementation references
-- **OpenCV**: For video processing capabilities
-- **Matplotlib**: For comprehensive visualization tools
-
-## 📚 References
-
-1. Goodfellow, I. J., et al. "Explaining and harnessing adversarial examples." ICLR 2015.
-2. Madry, A., et al. "Towards deep learning models resistant to adversarial attacks." ICLR 2018.
-3. Moosavi-Dezfooli, S. M., et al. "DeepFool: a simple and accurate method to fool deep neural networks." CVPR 2016.
-4. Carlini, N., & Wagner, D. "Towards evaluating the robustness of neural networks." S&P 2017.
-
-## 📧 Support
-
-For questions, issues, or contributions, please:
-1. Check existing GitHub issues
-2. Create a new issue with detailed description
-3. Include system information and error logs
-4. Provide minimal reproduction steps
-
----
-
-**Made with ❤️ for the adversarial ML community**
->>>>>>> d5c6def (Initial commit: Adversarial Attack Visualizer)
+- Support for additional attacks (e.g., JSMA, BIM)
+- Custom model uploads
+- Batch attack support
+- Export result capability
+- Performance benchmarking
