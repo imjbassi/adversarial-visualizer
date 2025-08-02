@@ -6,6 +6,13 @@ A comprehensive GUI application for visualizing and understanding adversarial at
 ![PyTorch](https://img.shields.io/badge/PyTorch-v1.9+-red.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
+**Attack Progression**
+
+![Attack Progression](docs/assets/attack_progression.gif)
+
+**Attack Surface Visualization**
+
+![Attack Surface](docs/assets/attack_surface.gif)
 ## Features
 
 ### Attack Methods
@@ -28,16 +35,6 @@ A comprehensive GUI application for visualizing and understanding adversarial at
 - Unsplash fallback support
 - Direct URL image loading
 - Automatic fallback to dummy images (optional)
-
-## Screenshots
-
-**Attack Progression**
-
-![Attack Progression](docs/assets/attack_progression.gif)
-
-**Attack Surface Visualization**
-
-![Attack Surface](docs/assets/attack_surface.gif)
 
 ## Installation
 
