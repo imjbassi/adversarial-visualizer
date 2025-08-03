@@ -44,7 +44,7 @@ A comprehensive GUI application for visualizing and understanding adversarial at
 
 ### Setup
 ```bash
-git clone https://github.com/yourusername/adversarial-attack-visualizer.git
+git clone https://github.com/imjbassi/adversarial-visualizer.git
 cd adversarial-attack-visualizer
 pip install -r requirements.txt
 cp .env.example .env
