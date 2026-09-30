@@ -47,7 +47,12 @@ AMBER = '#fbbf24'
 
 def record_pgd_attack(model, image, label, epsilon=0.03, alpha=0.0012,
                       iters=150, momentum=0.9):
-    """Run PGD step by step, returning a snapshot after every iteration."""
+    """Run PGD step by step, returning a snapshot after every iteration.
+
+    The L-inf budget ramps linearly from 0 to `epsilon` across the run, so
+    the animation shows the perturbation growing and the confidence decaying
+    gradually instead of collapsing in the first few frames.
+    """
     ori = image.clone().detach()
     x = ori.clone().detach()
     grad_accum = torch.zeros_like(x)
@@ -75,7 +80,8 @@ def record_pgd_attack(model, image, label, epsilon=0.03, alpha=0.0012,
         grad = x.grad / (x.grad.abs().mean() + 1e-12)
         grad_accum = momentum * grad_accum + grad
         adv = x + alpha * grad_accum.sign()
-        eta = torch.clamp(adv - ori, -epsilon, epsilon)
+        eps_i = epsilon * (i + 1) / iters
+        eta = torch.clamp(adv - ori, -eps_i, eps_i)
         x = torch.clamp(ori + eta, 0, 1).detach()
         snap(i + 1, x)
     return snapshots
@@ -141,7 +147,7 @@ class DemoRenderer:
         fig.text(0.6615, 0.62, '=', color=CYAN, fontsize=26,
                  fontweight='bold', ha='center', va='center')
 
-        self.ax_bars = styled_axes(fig, [0.050, 0.075, 0.385, 0.235])
+        self.ax_bars = styled_axes(fig, [0.115, 0.075, 0.320, 0.235])
         self.ax_curve = styled_axes(fig, [0.545, 0.075, 0.405, 0.235])
 
         self.hud = fig.text(0.95, 0.955, '', color=CYAN, fontsize=11,
@@ -211,9 +217,13 @@ class DemoRenderer:
         self.ax_bars.tick_params(colors=MUTED, labelsize=8)
         self.ax_bars.grid(True, axis='x', alpha=0.15, color=MUTED)
         for y, c in zip(range(5), top5):
-            self.ax_bars.text(min(probs[c] + 0.02, 0.86), y,
-                              f"{probs[c]:.1%}", va='center',
-                              color=MUTED, fontsize=8.5)
+            inside = probs[c] > 0.82
+            self.ax_bars.text(probs[c] - 0.02 if inside else probs[c] + 0.02,
+                              y, f"{probs[c]:.1%}", va='center',
+                              ha='right' if inside else 'left',
+                              color=BG if inside else MUTED,
+                              fontsize=8.5,
+                              fontweight='bold' if inside else 'normal')
 
         # --- confidence curve
         self.ax_curve.clear()
