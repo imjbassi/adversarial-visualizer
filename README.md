@@ -8,6 +8,22 @@ explore the robustness of deep neural networks.
 ![PyTorch](https://img.shields.io/badge/PyTorch-v2.0+-red.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
+## Demo
+
+A PGD attack collapsing ResNet-18's 96% "Pembroke Welsh corgi" prediction —
+generated with `scripts/make_demo_video.py`:
+
+![Demo](docs/assets/demo.gif)
+
+Higher-quality MP4: [docs/assets/demo.mp4](docs/assets/demo.mp4)
+
+Render your own from any image:
+
+```bash
+pip install imageio imageio-ffmpeg
+python scripts/make_demo_video.py --image path/or/url.jpg --out demo.mp4
+```
+
 **Attack Progression**
 
 ![Attack Progression](docs/assets/attack_progression.gif)
