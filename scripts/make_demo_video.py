@@ -264,21 +264,28 @@ class DemoRenderer:
         return buf[..., :3].copy()
 
 
-def ease(t):
-    return 3 * t ** 2 - 2 * t ** 3
-
-
 def build_frames(renderer, snaps, fps):
-    """Assemble the frame sequence: intro hold, eased attack, outro hold."""
+    """Assemble the frame sequence: intro hold, adaptive attack, outro hold.
+
+    Video time during the attack is allocated proportionally to how much the
+    model's belief distribution changes per iteration, so the interesting
+    part (the prediction flip) plays out slowly while flat stretches pass
+    quickly, whatever the input image.
+    """
     frames = []
     intro = renderer.render(snaps[0])
     frames.extend([intro] * int(1.5 * fps))
 
+    deltas = np.array([np.abs(snaps[i]['probs'] - snaps[i - 1]['probs']).sum()
+                       for i in range(1, len(snaps))]) + 0.02
+    cum = np.concatenate([[0.0], np.cumsum(deltas)])
+    cum /= cum[-1]
+
     n_attack_frames = int(6.0 * fps)
     for f in range(n_attack_frames):
-        t = ease((f + 1) / n_attack_frames)
-        idx = min(int(round(t * (len(snaps) - 1))), len(snaps) - 1)
-        frames.append(renderer.render(snaps[idx]))
+        t = (f + 1) / n_attack_frames
+        idx = int(np.searchsorted(cum, t, side='left'))
+        frames.append(renderer.render(snaps[min(idx, len(snaps) - 1)]))
 
     outro = renderer.render(snaps[-1], final=True)
     frames.extend([outro] * int(2.5 * fps))
