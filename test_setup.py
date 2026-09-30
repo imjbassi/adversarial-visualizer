@@ -1,272 +1,198 @@
 #!/usr/bin/env python3
-"""
-Test script to verify all components of the Adversarial Attack Visualizer work correctly.
-Run this script to ensure the application is properly set up and functional.
+"""System test for the Adversarial Attack Visualizer.
+
+Verifies dependencies, project structure, and — most importantly — that every
+attack implementation actually fools a small classifier on synthetic data.
+Runs offline (no model download or network access required).
 """
 
 import sys
-import os
-import importlib.util
 import traceback
 from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+
 def test_imports():
-    """Test all required imports."""
+    """All required third-party packages import."""
     print("Testing imports...")
-    
-    required_packages = [
-        'torch',
-        'torchvision', 
-        'tkinter',
-        'matplotlib',
-        'numpy',
-        'PIL',
-        'requests'
-    ]
-    
-    failed_imports = []
-    
-    for package in required_packages:
+    required = ['torch', 'torchvision', 'matplotlib', 'numpy', 'PIL',
+                'requests', 'dotenv']
+    failed = []
+    for package in required:
         try:
-            if package == 'PIL':
-                from PIL import Image, ImageTk
-            elif package == 'tkinter':
-                import tkinter as tk
-                from tkinter import ttk, filedialog, messagebox
-            else:
-                importlib.import_module(package)
-            print(f"  ✓ {package}")
+            __import__(package)
+            print(f"  + {package}")
         except ImportError as e:
-            print(f"  ✗ {package}: {e}")
-            failed_imports.append(package)
-    
-    if failed_imports:
-        print(f"\nFailed imports: {', '.join(failed_imports)}")
+            print(f"  x {package}: {e}")
+            failed.append(package)
+    if failed:
         print("Run: pip install -r requirements.txt")
-        return False
-    else:
-        print("All imports successful!")
-        return True
+    return not failed
 
-def test_attack_modules():
-    """Test attack module imports."""
-    print("\nTesting attack modules...")
-    
-    attack_modules = ['fgsm', 'pgd', 'deepfool', 'cw']
-    failed_modules = []
-    
-    # Add attacks directory to path
-    attacks_dir = Path(__file__).parent / 'attacks'
-    if attacks_dir.exists():
-        sys.path.insert(0, str(attacks_dir))
-    
-    for module_name in attack_modules:
-        try:
-            module = importlib.import_module(module_name)
-            # Check if the attack function exists
-            if hasattr(module, f'{module_name}_attack'):
-                print(f"  ✓ {module_name}")
-            else:
-                print(f"  ! {module_name}: function {module_name}_attack not found")
-        except ImportError as e:
-            print(f"  ✗ {module_name}: {e}")
-            failed_modules.append(module_name)
-    
-    if failed_modules:
-        print(f"\nFailed attack modules: {', '.join(failed_modules)}")
-        return False
-    else:
-        print("All attack modules loaded successfully!")
-        return True
 
-def test_torch_setup():
-    """Test PyTorch setup and CUDA availability."""
-    print("\nTesting PyTorch setup...")
-    
+def test_tkinter():
+    """tkinter is available (needs a display for the real GUI)."""
+    print("\nTesting tkinter...")
     try:
-        import torch
-        import torchvision.models as models
-        
-        print(f"  ✓ PyTorch version: {torch.__version__}")
-        print(f"  ✓ CUDA available: {torch.cuda.is_available()}")
-        
-        if torch.cuda.is_available():
-            print(f"  ✓ CUDA device: {torch.cuda.get_device_name(0)}")
-            device = torch.device("cuda")
-        else:
-            print("  i Using CPU (CUDA not available)")
-            device = torch.device("cpu")
-        
-        # Test model loading
-        print("  - Testing model loading...")
-        model = models.resnet18(weights='IMAGENET1K_V1').eval().to(device)
-        print("  ✓ ResNet-18 loaded successfully!")
-        
-        # Test basic tensor operations
-        test_tensor = torch.randn(1, 3, 224, 224).to(device)
-        with torch.no_grad():
-            output = model(test_tensor)
-        print(f"  ✓ Model inference test passed! Output shape: {output.shape}")
-        
+        import tkinter  # noqa: F401
+        print("  + tkinter importable")
         return True
-        
-    except Exception as e:
-        print(f"  ✗ PyTorch test failed: {e}")
+    except ImportError as e:
+        print(f"  x tkinter: {e} (install your OS's python3-tk package)")
         return False
 
-def test_gui_components():
-    """Test GUI components without actually opening the window."""
-    print("\nTesting GUI components...")
-    
-    try:
-        import tkinter as tk
-        from tkinter import ttk
-        
-        # Create a test root window (hidden)
-        root = tk.Tk()
-        root.withdraw()  # Hide the window
-        
-        # Test basic widgets
-        test_frame = ttk.Frame(root)
-        test_button = ttk.Button(test_frame, text="Test")
-        test_label = ttk.Label(test_frame, text="Test Label")
-        test_scale = ttk.Scale(test_frame, from_=0, to=1)
-        
-        print("  ✓ Basic tkinter widgets work")
-        
-        # Test matplotlib with tkinter
-        import matplotlib
-        matplotlib.use('Agg')  # Use non-interactive backend for testing
-        import matplotlib.pyplot as plt
-        
-        fig, ax = plt.subplots()
-        ax.plot([1, 2, 3], [1, 4, 2])
-        plt.close(fig)
-        
-        print("  ✓ Matplotlib integration works")
-        
-        root.destroy()
-        return True
-        
-    except Exception as e:
-        print(f"  ✗ GUI test failed: {e}")
-        return False
 
 def test_file_structure():
-    """Test project file structure."""
+    """Expected project files exist."""
     print("\nTesting file structure...")
-    
-    required_files = [
+    required = [
         'scripts/run_attack.py',
+        'attacks/__init__.py',
         'attacks/fgsm.py',
-        'attacks/pgd.py', 
+        'attacks/pgd.py',
         'attacks/deepfool.py',
         'attacks/cw.py',
+        'utils/model_utils.py',
+        'utils/image_utils.py',
         'requirements.txt',
-        'README.md'
+        '.env.example',
+        'README.md',
     ]
-    
-    project_root = Path(__file__).parent
-    missing_files = []
-    
-    for file_path in required_files:
-        full_path = project_root / file_path
-        if full_path.exists():
-            print(f"  ✓ {file_path}")
+    missing = []
+    for rel in required:
+        if (PROJECT_ROOT / rel).exists():
+            print(f"  + {rel}")
         else:
-            print(f"  ✗ {file_path} - Missing!")
-            missing_files.append(file_path)
-    
-    if missing_files:
-        print(f"\nMissing files: {', '.join(missing_files)}")
-        return False
-    else:
-        print("All required files present!")
-        return True
+            print(f"  x {rel} - missing!")
+            missing.append(rel)
+    return not missing
 
-def run_integration_test():
-    """Run a simple integration test."""
-    print("\nRunning integration test...")
-    
-    try:
-        # Add scripts directory to path
-        scripts_dir = Path(__file__).parent / 'scripts'
-        if scripts_dir.exists():
-            sys.path.insert(0, str(scripts_dir))
-        
-        # Import the main GUI class
-        import importlib.util
-        script_path = Path(__file__).parent / 'scripts' / 'run_attack.py'
-        if script_path.exists():
-            spec = importlib.util.spec_from_file_location("run_attack", script_path)
-            run_attack_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(run_attack_module)
-            AdversarialAttackGUI = run_attack_module.AdversarialAttackGUI
-        else:
-            raise ImportError("run_attack.py not found in scripts directory")
-        
-        print("  ✓ Main GUI class imported successfully")
-        
-        # Test creating an instance (without showing the GUI)
-        import tkinter as tk
-        root = tk.Tk()
-        root.withdraw()  # Hide the window
-        
-        # This will test model loading and initialization
-        print("  - Testing GUI initialization...")
-        gui = AdversarialAttackGUI(root)
-        print("  ✓ GUI initialized successfully!")
-        
-        root.destroy()
-        return True
-        
-    except Exception as e:
-        print(f"  ✗ Integration test failed: {e}")
-        print(f"  Traceback: {traceback.format_exc()}")
-        return False
+
+def _tiny_model_and_input():
+    """A small linear classifier whose decision boundary attacks can cross."""
+    import torch
+    import torch.nn as nn
+
+    torch.manual_seed(0)
+    model = nn.Sequential(nn.Flatten(), nn.Linear(3 * 16 * 16, 10)).eval()
+    image = torch.rand(1, 3, 16, 16)
+    with torch.no_grad():
+        label = model(image).argmax(dim=1)
+    return model, image, label
+
+
+def test_attacks():
+    """Each attack returns a valid [0, 1] image and (usually) flips the label."""
+    print("\nTesting attack implementations...")
+    import torch
+    from attacks import ATTACKS
+
+    model, image, label = _tiny_model_and_input()
+    params = {
+        'FGSM': {'epsilon': 0.1},
+        'PGD': {'epsilon': 0.1, 'iters': 20},
+        'DeepFool': {'num_classes': 10, 'max_iter': 30},
+        'CW': {'c': 5.0, 'max_iter': 100},
+    }
+
+    all_valid = True
+    for name, attack_fn in ATTACKS.items():
+        try:
+            calls = []
+            adv = attack_fn(model, image.clone(), label,
+                            callback=lambda i, l, c: calls.append(i),
+                            **params[name])
+            assert adv.shape == image.shape, "shape mismatch"
+            assert adv.min() >= 0 and adv.max() <= 1, "output outside [0, 1]"
+            assert not torch.isnan(adv).any(), "NaN in output"
+            assert calls, "progress callback never invoked"
+            with torch.no_grad():
+                adv_pred = model(adv).argmax(dim=1)
+            flipped = (adv_pred != label).item()
+            assert flipped, "attack failed to change the prediction"
+            print(f"  + {name}: valid output, label flipped")
+        except Exception as e:
+            print(f"  x {name}: {e}")
+            traceback.print_exc()
+            all_valid = False
+    return all_valid
+
+
+def test_normalized_model():
+    """NormalizedModel matches manual normalization + underlying model."""
+    print("\nTesting NormalizedModel wrapper...")
+    import torch
+    import torch.nn as nn
+    from utils.model_utils import NormalizedModel
+
+    torch.manual_seed(0)
+    inner = nn.Sequential(nn.Flatten(), nn.Linear(3 * 8 * 8, 4)).eval()
+    wrapped = NormalizedModel(inner).eval()
+
+    x = torch.rand(1, 3, 8, 8)
+    mean = wrapped.mean
+    std = wrapped.std
+    with torch.no_grad():
+        expected = inner((x - mean) / std)
+        actual = wrapped(x)
+    ok = torch.allclose(expected, actual)
+    print(f"  {'+' if ok else 'x'} normalization applied inside forward pass")
+    return ok
+
+
+def test_image_utils():
+    """Image helper functions behave sensibly without network access."""
+    print("\nTesting image utilities...")
+    from utils.image_utils import get_placeholder_url, search_pexels
+
+    ok = True
+    url = get_placeholder_url("test term")
+    if url.startswith('https://') and 'test' in url:
+        print("  + placeholder URL generation")
+    else:
+        print(f"  x unexpected placeholder URL: {url}")
+        ok = False
+
+    if search_pexels("cat", api_key=None) is None:
+        print("  + Pexels search skipped cleanly without API key")
+    else:
+        print("  x Pexels search should return None without an API key")
+        ok = False
+    return ok
+
 
 def main():
-    """Run all tests."""
-    print("Adversarial Attack Visualizer - System Test\n")
+    print("Adversarial Attack Visualizer - System Test")
     print("=" * 50)
-    
+
     tests = [
-        ("Import Test", test_imports),
-        ("Attack Modules Test", test_attack_modules), 
-        ("PyTorch Setup Test", test_torch_setup),
-        ("GUI Components Test", test_gui_components),
-        ("File Structure Test", test_file_structure),
-        ("Integration Test", run_integration_test)
+        ("Imports", test_imports),
+        ("tkinter", test_tkinter),
+        ("File structure", test_file_structure),
+        ("NormalizedModel", test_normalized_model),
+        ("Attack implementations", test_attacks),
+        ("Image utilities", test_image_utils),
     ]
-    
-    passed_tests = 0
-    total_tests = len(tests)
-    
-    for test_name, test_func in tests:
+
+    passed = 0
+    for name, fn in tests:
         try:
-            if test_func():
-                passed_tests += 1
-            print()  # Add spacing between tests
+            if fn():
+                passed += 1
         except Exception as e:
-            print(f"  ✗ {test_name} crashed: {e}")
-            print()
-    
+            print(f"  x {name} crashed: {e}")
+            traceback.print_exc()
+        print()
+
     print("=" * 50)
-    print(f"Test Results: {passed_tests}/{total_tests} tests passed")
-    
-    if passed_tests == total_tests:
-        print("All tests passed! The application is ready to use.")
-        print("\nTo start the application, run:")
+    print(f"Test results: {passed}/{len(tests)} passed")
+    if passed == len(tests):
+        print("All tests passed. Start the app with:")
         print("   python scripts/run_attack.py")
-    else:
-        print("Some tests failed. Please check the error messages above.")
-        print("\nCommon fixes:")
-        print("   - Run: pip install -r requirements.txt")
-        print("   - Check file structure and paths")
-        print("   - Ensure Python 3.8+ is being used")
-    
-    return passed_tests == total_tests
+    return passed == len(tests)
+
 
 if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1)
+    sys.exit(0 if main() else 1)

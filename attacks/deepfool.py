@@ -1,89 +1,84 @@
 import torch
 import torch.nn.functional as F
 
-def deepfool_attack(model, image, label, epsilon=None, random_start=None, num_classes=10, overshoot=0.02, max_iter=50):
-    """
-    Minimal DeepFool implementation for image classification models.
+
+def deepfool_attack(model, image, label=None, num_classes=10, overshoot=0.02,
+                    max_iter=50, callback=None, **kwargs):
+    """DeepFool minimal-perturbation attack (Moosavi-Dezfooli et al., 2016).
+
+    Iteratively moves the input toward the nearest decision boundary among
+    the top-``num_classes`` candidate classes of the original prediction.
+    Only the candidate classes are differentiated, so the attack stays fast
+    even for 1000-class models.
+
     Args:
-        model: PyTorch model
-        image: input tensor (1, C, H, W)
-        label: true label tensor (1,)
-        num_classes: number of classes to consider
-        overshoot: final perturbation scaling
+        model: classifier taking [0, 1] pixel-space tensors (1, C, H, W)
+        image: input tensor in [0, 1]
+        label: true label tensor of shape (1,); inferred if None
+        num_classes: number of candidate classes to consider
+        overshoot: final perturbation scaling to cross the boundary
         max_iter: max iterations
+        callback: optional callable(iteration, loss, confidence)
     Returns:
-        perturbed image tensor
+        adversarial image tensor in [0, 1]
     """
-    image = image.clone().detach().requires_grad_(True)
+    image = image.clone().detach()
+
+    with torch.no_grad():
+        output = model(image)
+    orig_label = label if label is not None else output.argmax(dim=1)
+    orig_class = orig_label.item()
+
+    # Candidate classes: highest-logit classes of the clean input
+    k = min(num_classes, output.shape[1])
+    candidates = output[0].topk(k).indices.tolist()
+    if orig_class not in candidates:
+        candidates.append(orig_class)
+
     pert_image = image.clone().detach()
-    output = model(image)
-    _, orig_label = output.max(1)
-    if label is not None:
-        orig_label = label
-    
-    # Limit num_classes if needed
-    num_classes = min(num_classes, output.shape[1])
-    
-    loops = 0
-    while loops < max_iter:
+
+    for loops in range(max_iter):
+        pert_image = pert_image.detach().requires_grad_(True)
         output = model(pert_image)
         logits = output[0]
-        orig_class = orig_label.item()
-        pert_image.requires_grad = True
-        
-        # Get gradient for original class
-        try:
-            grad_orig = torch.autograd.grad(logits[orig_class], pert_image, retain_graph=True, allow_unused=True)[0]
-            if grad_orig is None:
-                grad_orig = torch.zeros_like(pert_image)
-        except Exception:
-            grad_orig = torch.zeros_like(pert_image)
-        
+
+        if callback is not None:
+            callback(loops, F.cross_entropy(output, orig_label).item(),
+                     torch.softmax(output, dim=1).max().item())
+
+        if logits.argmax().item() != orig_class:
+            break
+
+        grad_orig = torch.autograd.grad(logits[orig_class], pert_image,
+                                        retain_graph=True)[0]
+
         min_dist = float('inf')
-        w = None
-        valid_grad_found = False
-        
-        for k in range(num_classes):
-            if k == orig_class:
+        best_w = None
+        for c in candidates:
+            if c == orig_class:
                 continue
-                
-            try:
-                grad_k = torch.autograd.grad(logits[k], pert_image, retain_graph=True, allow_unused=True)[0]
-                if grad_k is None:
-                    continue
-                    
-                w_k = grad_k - grad_orig
-                norm_w_k = torch.norm(w_k.flatten()) + 1e-8
-                
-                f_k = (logits[k] - logits[orig_class]).item()
-                if abs(f_k) < 1e-8:
-                    continue
-                    
-                dist = abs(f_k) / norm_w_k
-                
-                if dist < min_dist:
-                    min_dist = dist
-                    w = w_k
-                    valid_grad_found = True
-            except Exception:
-                continue
-        
-        if not valid_grad_found or w is None:
-            noise = torch.randn_like(pert_image) * 0.01
-            pert_image = torch.clamp(pert_image + noise, 0, 1).detach().requires_grad_(True)
-            loops += 1
-            continue
-            
-        r_i = min_dist * w / (torch.norm(w.flatten()) + 1e-8)
-        pert_image = pert_image + (1 + overshoot) * r_i
-        pert_image = torch.clamp(pert_image, 0, 1).detach().requires_grad_(True)
-        
+            grad_c = torch.autograd.grad(logits[c], pert_image,
+                                         retain_graph=True)[0]
+            w_c = grad_c - grad_orig
+            f_c = (logits[c] - logits[orig_class]).item()
+            norm_w = w_c.flatten().norm().item() + 1e-8
+            dist = abs(f_c) / norm_w
+            if dist < min_dist:
+                min_dist = dist
+                best_w = w_c / norm_w
+
+        if best_w is None:
+            break
+
+        r_i = (min_dist + 1e-4) * best_w
+        pert_image = torch.clamp(pert_image + (1 + overshoot) * r_i, 0, 1).detach()
+
+    pert_image = pert_image.detach()
+
+    if callback is not None:
         with torch.no_grad():
-            new_output = model(pert_image)
-            new_label = new_output.max(1)[1].item()
-            if new_label != orig_class:
-                break
-                
-        loops += 1
-    
-    return pert_image.detach()
+            output = model(pert_image)
+            callback(max_iter, F.cross_entropy(output, orig_label).item(),
+                     torch.softmax(output, dim=1).max().item())
+
+    return pert_image

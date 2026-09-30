@@ -1,102 +1,83 @@
 import torch
 import torch.nn.functional as F
 
-def cw_attack(model, image, label, targeted=False, c=1e-2, kappa=0, lr=0.01, max_iter=100):
-    """
-    Minimal Carlini-Wagner L2 attack implementation for image classification models.
+
+def cw_attack(model, image, label=None, targeted=False, c=1.0, kappa=0,
+              lr=0.01, max_iter=100, callback=None, **kwargs):
+    """Carlini & Wagner L2 attack (Carlini & Wagner, 2017).
+
+    Optimizes in tanh space so the adversarial image stays in [0, 1] without
+    clipping. Tracks the best (lowest-L2 successful) adversarial found.
+
     Args:
-        model: PyTorch model
-        image: input tensor (1, C, H, W)
-        label: true label tensor (1,)
-        targeted: whether to perform a targeted attack
-        c: regularization constant
-        kappa: confidence parameter
-        lr: learning rate
-        max_iter: max iterations
+        model: classifier taking [0, 1] pixel-space tensors (1, C, H, W)
+        image: input tensor in [0, 1]
+        label: true label (untargeted) or target label (targeted); inferred
+            from the model's prediction if None
+        targeted: whether to run a targeted attack
+        c: trade-off constant between L2 distance and classification loss
+        kappa: confidence margin
+        lr: Adam learning rate
+        max_iter: optimization steps
+        callback: optional callable(iteration, loss, confidence)
     Returns:
-        perturbed image tensor
+        adversarial image tensor in [0, 1]
     """
-    device = image.device
     image = image.clone().detach()
-    
-    # Avoid extreme values that cause problems with atanh
-    image_clamp = torch.clamp(image, 0.001, 0.999)
-    
-    # Initialize w with a safe value
-    w = torch.atanh(2 * image_clamp - 1)
-    w = w.clone().detach().requires_grad_(True)
-    
-    # Use a smaller learning rate for stability
-    optimizer = torch.optim.Adam([w], lr=min(lr, 0.005))
-    
+    device = image.device
+
     if label is not None:
-        target = label.item() 
+        target = label.item()
     else:
         with torch.no_grad():
-            target = model(image).argmax().item()
-    
+            target = model(image).argmax(dim=1).item()
+
+    # Initialize w so that tanh(w) reproduces the original image
+    image_clamped = torch.clamp(image, 1e-3, 1 - 1e-3)
+    w = torch.atanh(2 * image_clamped - 1).detach().requires_grad_(True)
+    optimizer = torch.optim.Adam([w], lr=lr)
+
+    best_adv = image.clone()
+    best_l2 = float('inf')
+
     for i in range(max_iter):
-        # Convert w to image space with bounds
-        adv_image = torch.tanh(w) * 0.5 + 0.5
-        adv_image = torch.clamp(adv_image, 0, 1)
-        
+        adv_image = (torch.tanh(w) + 1) / 2
         output = model(adv_image)
-        
-        # Handle out-of-bounds target
-        if target >= output.size(1):
-            target = output.argmax(dim=1).item()
-        
-        # Compute the attack objective safely
+
         target_score = output[0, target]
-        
-        # Create a mask for all classes except the target
-        mask = torch.ones(output.size(1), dtype=torch.bool, device=device)
+        mask = torch.ones(output.shape[1], dtype=torch.bool, device=device)
         mask[target] = False
-        other_scores = output[0, mask]
-        
+        best_other = output[0, mask].max()
+
         if targeted:
-            if len(other_scores) > 0:
-                best_other_score = torch.max(other_scores)
-                f = torch.clamp(best_other_score - target_score + kappa, min=0)
-            else:
-                f = torch.tensor(0.0, device=device)
+            f = torch.clamp(best_other - target_score + kappa, min=0)
         else:
-            if len(other_scores) > 0:
-                best_other_score = torch.max(other_scores)
-                f = torch.clamp(target_score - best_other_score + kappa, min=0)
-            else:
-                f = torch.tensor(0.0, device=device)
-        
-        # Calculate the L2 distance
+            f = torch.clamp(target_score - best_other + kappa, min=0)
+
         l2 = torch.sum((adv_image - image) ** 2)
-        
-        # Total loss
         loss = l2 + c * f
-        
+
         optimizer.zero_grad()
         loss.backward()
-        
-        # Check for NaN in gradients and fix
-        if torch.isnan(w.grad).any() or torch.isinf(w.grad).any():
-            w.grad[torch.isnan(w.grad) | torch.isinf(w.grad)] = 0.0
-        
         optimizer.step()
-        
-        # Clamp w to prevent extreme values
+
         with torch.no_grad():
-            w.data = torch.clamp(w.data, -10, 10)
-        
-        # Check for successful attack
-        if i % 10 == 0:
-            with torch.no_grad():
-                current_output = model(adv_image)
-                current_pred = current_output.argmax(dim=1).item()
-                if (targeted and current_pred == target) or (not targeted and current_pred != target):
-                    if not torch.isnan(current_output).any():
-                        break
-    
-    with torch.no_grad():
-        adv_image = torch.tanh(w) * 0.5 + 0.5
-        adv_image = torch.clamp(adv_image, 0, 1)
-    
-    return adv_image.detach()
+            adv_eval = (torch.tanh(w) + 1) / 2
+            eval_output = model(adv_eval)
+            pred = eval_output.argmax(dim=1).item()
+            success = (pred == target) if targeted else (pred != target)
+            cur_l2 = torch.sum((adv_eval - image) ** 2).item()
+            if success and cur_l2 < best_l2:
+                best_l2 = cur_l2
+                best_adv = adv_eval.clone()
+
+            if callback is not None and (i % max(1, max_iter // 20) == 0
+                                         or i == max_iter - 1):
+                callback(i, loss.item(),
+                         torch.softmax(eval_output, dim=1).max().item())
+
+    if best_l2 == float('inf'):
+        # No successful adversarial found; return the final iterate
+        with torch.no_grad():
+            best_adv = (torch.tanh(w) + 1) / 2
+    return best_adv.detach()

@@ -1,0 +1,23 @@
+# Environment / secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# OS cruft
+desktop.ini
+Thumbs.db
+.DS_Store
+
+# Tooling
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Outputs
+*.png
+!docs/assets/*.png
+results/
