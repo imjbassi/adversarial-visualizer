@@ -43,8 +43,11 @@ def load_model(device=None):
 
 
 def build_transform(size=224):
-    """Preprocessing for pixel-space models: resize + ToTensor (no normalize)."""
+    """Preprocessing for pixel-space models (no normalize — the model wrapper
+    handles that). Resize the short side then center-crop, the standard
+    ImageNet evaluation transform, so images are never stretched."""
     return transforms.Compose([
-        transforms.Resize((size, size)),
+        transforms.Resize(int(size * 256 / 224)),
+        transforms.CenterCrop(size),
         transforms.ToTensor(),
     ])

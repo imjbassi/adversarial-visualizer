@@ -32,17 +32,18 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.model_utils import load_model, build_transform
 from utils.image_utils import load_image_from_url, load_image_from_file
 
-# ---------------------------------------------------------------- palette
+# ------------------------------------------------- palette (paper style)
 
-BG = '#0d1117'
-PANEL = '#161b22'
-FG = '#e6edf3'
-MUTED = '#8b949e'
-CYAN = '#22d3ee'
-MAGENTA = '#f472b6'
-GREEN = '#4ade80'
-RED = '#f87171'
-AMBER = '#fbbf24'
+BG = '#ffffff'
+PANEL = '#ffffff'
+BORDER = '#b0b0b0'
+FG = '#1a1a1a'
+MUTED = '#555555'
+CYAN = '#1f77b4'      # accent (arrows, HUD)
+MAGENTA = '#d62728'   # adversarial class
+GREEN = '#2ca02c'     # true class
+RED = '#d62728'
+AMBER = '#b8860b'
 
 
 def record_pgd_attack(model, image, label, epsilon=0.03, alpha=0.0012,
@@ -91,7 +92,7 @@ def styled_axes(fig, rect, title=None):
     ax = fig.add_axes(rect)
     ax.set_facecolor(PANEL)
     for spine in ax.spines.values():
-        spine.set_color('#30363d')
+        spine.set_color(BORDER)
     ax.tick_params(colors=MUTED, labelsize=8)
     if title:
         ax.set_title(title, color=FG, fontsize=11, pad=8)
@@ -173,7 +174,7 @@ class DemoRenderer:
 
         self.ax_pert.clear()
         diff = np.abs(snap['image'] - self.orig_img).mean(axis=2)
-        self.ax_pert.imshow(diff, cmap='inferno',
+        self.ax_pert.imshow(diff, cmap='viridis',
                             vmin=0, vmax=max(self.epsilon, 1e-6))
         self.ax_pert.set_xticks([]), self.ax_pert.set_yticks([])
         self.ax_pert.set_title('Perturbation', color=FG, fontsize=12, pad=8)
@@ -190,7 +191,7 @@ class DemoRenderer:
             color=RED if fooled else GREEN, fontsize=10.5,
             fontweight='bold' if fooled else 'normal')
         for spine in self.ax_adv.spines.values():
-            spine.set_color(RED if fooled else '#30363d')
+            spine.set_color(RED if fooled else BORDER)
             spine.set_linewidth(2.2 if fooled else 1.0)
 
         if final and fooled:
@@ -205,7 +206,7 @@ class DemoRenderer:
         self.ax_bars.set_facecolor(PANEL)
         top5 = np.argsort(probs)[-5:]
         colors = [GREEN if c == orig_class else
-                  (MAGENTA if c == pred and fooled else '#3b4a5a')
+                  (MAGENTA if c == pred and fooled else '#c7c7c7')
                   for c in top5]
         self.ax_bars.barh(range(5), probs[top5], color=colors, height=0.62)
         self.ax_bars.set_yticks(range(5))
@@ -215,7 +216,7 @@ class DemoRenderer:
         self.ax_bars.set_title('Model beliefs (top 5)', color=FG,
                                fontsize=11, pad=8)
         self.ax_bars.tick_params(colors=MUTED, labelsize=8)
-        self.ax_bars.grid(True, axis='x', alpha=0.15, color=MUTED)
+        self.ax_bars.grid(True, axis='x', alpha=0.8, color='#e0e0e0')
         for y, c in zip(range(5), top5):
             inside = probs[c] > 0.82
             self.ax_bars.text(probs[c] - 0.02 if inside else probs[c] + 0.02,
@@ -234,9 +235,8 @@ class DemoRenderer:
         true_conf = [s['probs'][orig_class] for s in history]
         other = np.array([np.delete(s['probs'], orig_class).max()
                           for s in history])
-        for lw, a in ((5, 0.15), (2.5, 1.0)):  # soft glow under the lines
-            self.ax_curve.plot(xs, true_conf, color=GREEN, lw=lw, alpha=a)
-            self.ax_curve.plot(xs, other, color=RED, lw=lw, alpha=a)
+        self.ax_curve.plot(xs, true_conf, color=GREEN, lw=2.0)
+        self.ax_curve.plot(xs, other, color=RED, lw=2.0)
         if self.flip_iter is not None and upto >= self.flip_iter:
             self.ax_curve.axvline(self.flip_iter, color=AMBER, lw=1,
                                   ls='--', alpha=0.8)
@@ -248,11 +248,11 @@ class DemoRenderer:
                                 fontsize=11, pad=8)
         self.ax_curve.set_xlabel('PGD iteration', color=MUTED, fontsize=9)
         self.ax_curve.tick_params(colors=MUTED, labelsize=8)
-        self.ax_curve.grid(True, alpha=0.15, color=MUTED)
+        self.ax_curve.grid(True, alpha=0.8, color='#e0e0e0')
         self.ax_curve.legend(
             [f'true: {short_name(cats[orig_class], 16)}', 'best other class'],
             loc='center right', fontsize=8, facecolor=PANEL,
-            edgecolor='#30363d', labelcolor=FG)
+            edgecolor=BORDER, labelcolor=FG)
 
         # --- HUD
         self.hud.set_text(f"iter {snap['iter']:>3d}")
